@@ -1,6 +1,6 @@
 import { random } from "lodash";
 import "../../dist/@types/sound-mixer.d.ts"
-import SoundMixer, { DeviceType, Device, AudioSession } from "../../dist/sound-mixer.js"
+import SoundMixer, { DeviceType, Device, AudioSession } from "../../dist/sound-mixer.cjs"
 
 describe("audio session", () => {
 
@@ -71,5 +71,67 @@ describe("audio session", () => {
 		afterAll(() => {
 			session.mute = mute;
 		})
+	});
+
+	describe("events", () => {
+		it("should have on method", () => {
+			expect(typeof session.on).toBe("function");
+		});
+
+		it("should have removeListener method", () => {
+			expect(typeof session.removeListener).toBe("function");
+		});
+
+		it("should register volume event listener", () => {
+			const handler = session.on("volume", () => {});
+			expect(typeof handler).toBe("number");
+			session.removeListener("volume", handler);
+		});
+
+		it("should register mute event listener", () => {
+			const handler = session.on("mute", () => {});
+			expect(typeof handler).toBe("number");
+			session.removeListener("mute", handler);
+		});
+
+		it("should remove volume event listener", () => {
+			const handler = session.on("volume", () => {});
+			const removed = session.removeListener("volume", handler);
+			expect(removed).toBe(true);
+		});
+
+		it("should remove mute event listener", () => {
+			const handler = session.on("mute", () => {});
+			const removed = session.removeListener("mute", handler);
+			expect(removed).toBe(true);
+		});
+
+		it("should trigger volume change event", (done) => {
+			const originalVolume = session.volume;
+			const handler = session.on("volume", (newVolume: number) => {
+				expect(typeof newVolume).toBe("number");
+				expect(newVolume).toBeGreaterThanOrEqual(0);
+				expect(newVolume).toBeLessThanOrEqual(1);
+				session.removeListener("volume", handler);
+				session.volume = originalVolume;
+				done();
+			});
+
+			// Trigger volume change
+			session.volume = originalVolume === 1 ? 0.5 : 1;
+		});
+
+		it("should trigger mute change event", (done) => {
+			const originalMute = session.mute;
+			const handler = session.on("mute", (newMute: boolean) => {
+				expect(typeof newMute).toBe("boolean");
+				session.removeListener("mute", handler);
+				session.mute = originalMute;
+				done();
+			});
+
+			// Trigger mute change
+			session.mute = !originalMute;
+		});
 	});
 });
