@@ -217,6 +217,32 @@ if (state === AudioSessionState.ACTIVE) {
 }
 ```
 
+ - ### session events
+Similar to devices, audio sessions now support event listeners for volume and mute changes.
+
+```TypeScript
+// import ...
+
+let session: AudioSession;
+// set session to a valid session object
+
+// Register a volume change listener
+const volumeHandler = session.on('volume', (newVolume: VolumeScalar) => {
+    console.log('Session volume changed to:', newVolume);
+});
+
+// Register a mute change listener
+const muteHandler = session.on('mute', (newMute: boolean) => {
+    console.log('Session mute state changed to:', newMute);
+});
+
+// Remove the listeners when no longer needed
+session.removeListener('volume', volumeHandler);
+session.removeListener('mute', muteHandler);
+```
+
+**Note:** Triggering a volume or mute change within a callback can cause the listeners to self-trigger, leading to an infinite loop. Exercise caution when implementing these event handlers.
+
 
 ### 4) Data Structures
 

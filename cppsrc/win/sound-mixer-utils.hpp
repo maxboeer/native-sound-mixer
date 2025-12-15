@@ -49,8 +49,15 @@ typedef struct
     DeviceType type;
 } DeviceDescriptor;
 
+typedef struct
+{
+    std::string id;
+    std::string name;
+} SessionDescriptor;
+
 bool deviceEquals(DeviceDescriptor a, DeviceDescriptor b);
 uint32_t hashcode(DeviceDescriptor device);
+bool sessionEquals(SessionDescriptor a, SessionDescriptor b);
 
 typedef struct
 {
@@ -72,6 +79,25 @@ class EventPool {
 
   private:
     static uint32_t getHashCode(DeviceDescriptor, EventType type);
+
+  private:
+    std::map<uint32_t, std::map<int, TSFN>> m_events;
+    int counter = 0;
+};
+
+class SessionEventPool {
+  public:
+    SessionEventPool();
+    virtual ~SessionEventPool();
+
+    int RegisterEvent(SessionDescriptor session, EventType type, TSFN value);
+    bool RemoveEvent(SessionDescriptor session, EventType type, int id);
+    std::vector<TSFN> GetListeners(SessionDescriptor session, EventType type);
+    void RemoveAllListeners(SessionDescriptor session, EventType type);
+    void Clear();
+
+  private:
+    static uint32_t getHashCode(SessionDescriptor, EventType type);
 
   private:
     std::map<uint32_t, std::map<int, TSFN>> m_events;

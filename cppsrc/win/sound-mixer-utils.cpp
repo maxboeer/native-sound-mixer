@@ -13,6 +13,13 @@ bool deviceEquals(DeviceDescriptor a, DeviceDescriptor b)
     return a.type == b.type;
 }
 
+bool sessionEquals(SessionDescriptor a, SessionDescriptor b)
+{
+    if (a.id != b.id)
+        return false;
+    return a.name == b.name;
+}
+
 static uint32_t jenkins_hash(const char *key, char eventType)
 {
     size_t i = 0;
@@ -157,5 +164,95 @@ void CallJs(Napi::Env env, Napi::Function cb,
 
         delete data;
     }
+}
+
+uint32_t SessionEventPool::getHashCode(SessionDescriptor session, EventType type)
+{
+    return jenkins_hash(session.id.c_str(), (char)type);
+}
+
+SessionEventPool::SessionEventPool() : counter(0)
+{
+}
+
+SessionEventPool::~SessionEventPool()
+{
+    Clear();
+}
+
+int SessionEventPool::RegisterEvent(
+    SessionDescriptor session, EventType type, TSFN func)
+{
+    uint32_t key = getHashCode(session, type);
+    if (m_events.count(key) <= 0)
+    {
+        std::map<int, TSFN> res;
+        res[counter] = func;
+        m_events[key] = res;
+    }
+    else
+    {
+        m_events[key][counter] = func;
+    }
+    return counter++;
+}
+
+bool SessionEventPool::RemoveEvent(SessionDescriptor session, EventType type, int id)
+{
+    uint32_t key = getHashCode(session, type);
+    if (m_events.count(key) <= 0)
+        return false;
+
+    if (m_events[key].count(id) > 0)
+    {
+        m_events[key][id].Release();
+        return m_events[key].erase(id) > 0;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+std::vector<TSFN> SessionEventPool::GetListeners(
+    SessionDescriptor session, EventType type)
+{
+    uint32_t key = getHashCode(session, type);
+    std::vector<TSFN> res;
+    if (m_events.count(key) <= 0)
+        return res;
+    std::map<int, TSFN> contained = m_events[key];
+    int i = 0;
+    for (auto it = contained.begin(); it != contained.end(); ++it)
+    {
+        res.push_back(it->second);
+    }
+
+    return res;
+}
+
+void SessionEventPool::RemoveAllListeners(SessionDescriptor session, EventType type)
+{
+    uint32_t key = getHashCode(session, type);
+    std::map<int, TSFN> contained = m_events[key];
+    for (auto it = contained.begin(); it != contained.end(); ++it)
+    {
+        it->second.Release();
+    }
+    m_events.erase(key);
+}
+
+void SessionEventPool::Clear()
+{
+    for (auto it1 = m_events.begin(); it1 != m_events.end(); ++it1)
+    {
+        std::map<int, TSFN> el = it1->second;
+        for (auto it2 = el.begin(); it2 != el.end(); ++it2)
+        {
+            it2->second.Release();
+        }
+    }
+    m_events.clear();
+    counter = 0;
 }
 } // namespace SoundMixerUtils
